@@ -1,0 +1,102 @@
+import React, { useState } from 'react';
+import { Button, Input, Table, Thead, Tbody, Tr, Th, Td, IconButton, VStack, HStack } from '@chakra-ui/react';
+import { FaPlus, FaTrash, FaDownload } from 'react-icons/fa';
+import Papa from 'papaparse';
+
+const CSVUploader = () => {
+  const [data, setData] = useState([]);
+  const [headers, setHeaders] = useState([]);
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (result) => {
+          setHeaders(result.meta.fields);
+          setData(result.data);
+        },
+        error: (error) => {
+          console.error('Error parsing CSV file:', error);
+        },
+      });
+    }
+  };
+
+  const handleAddRow = () => {
+    const newRow = headers.reduce((acc, header) => ({ ...acc, [header]: '' }), {});
+    setData([...data, newRow]);
+  };
+
+  const handleRemoveRow = (index) => {
+    const newData = data.filter((_, i) => i !== index);
+    setData(newData);
+  };
+
+  const handleDownload = () => {
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'edited_data.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleInputChange = (index, header, value) => {
+    const newData = [...data];
+    newData[index][header] = value;
+    setData(newData);
+  };
+
+  return (
+    <VStack spacing={4}>
+      <Input type="file" accept=".csv" onChange={handleFileUpload} />
+      {data.length > 0 && (
+        <>
+          <Table variant="simple">
+            <Thead>
+              <Tr>
+                {headers.map((header) => (
+                  <Th key={header}>{header}</Th>
+                ))}
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {data.map((row, rowIndex) => (
+                <Tr key={rowIndex}>
+                  {headers.map((header) => (
+                    <Td key={header}>
+                      <Input
+                        value={row[header]}
+                        onChange={(e) => handleInputChange(rowIndex, header, e.target.value)}
+                      />
+                    </Td>
+                  ))}
+                  <Td>
+                    <IconButton
+                      aria-label="Remove row"
+                      icon={<FaTrash />}
+                      onClick={() => handleRemoveRow(rowIndex)}
+                    />
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <HStack spacing={4}>
+            <IconButton aria-label="Add row" icon={<FaPlus />} onClick={handleAddRow} />
+            <Button leftIcon={<FaDownload />} onClick={handleDownload}>
+              Download CSV
+            </Button>
+          </HStack>
+        </>
+      )}
+    </VStack>
+  );
+};
+
+export default CSVUploader;
